@@ -325,4 +325,196 @@ document.addEventListener('DOMContentLoaded', () => {
       field.addEventListener('change', clearError);
     });
   }
+
+  // 8. 1:1 Live Chat Widget Logic
+  const chatWidget = document.getElementById('chat-widget');
+  const chatTriggerBtn = document.getElementById('chat-trigger-btn');
+  const chatCloseBtn = document.getElementById('chat-close-btn');
+  const chatWindow = document.getElementById('chat-window');
+  const chatMessages = document.getElementById('chat-messages');
+  const chatForm = document.getElementById('chat-form');
+  const chatInput = document.getElementById('chat-input');
+  const chatTyping = document.getElementById('chat-typing-indicator');
+  const quickChips = document.querySelectorAll('.quick-chip');
+  const chatInitTime = document.getElementById('chat-init-time');
+
+  function getCurrentTimeString() {
+    const now = new Date();
+    let hours = now.getHours();
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? '오후' : '오전';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    return `${ampm} ${hours}:${minutes}`;
+  }
+
+  if (chatInitTime) {
+    chatInitTime.textContent = getCurrentTimeString();
+  }
+
+  // Toggle chat window open / close
+  if (chatTriggerBtn && chatWidget) {
+    chatTriggerBtn.addEventListener('click', () => {
+      const isActive = chatWidget.classList.toggle('active');
+      chatTriggerBtn.setAttribute('aria-expanded', isActive.toString());
+      if (chatWindow) chatWindow.setAttribute('aria-hidden', (!isActive).toString());
+
+      if (isActive && chatInput) {
+        setTimeout(() => chatInput.focus(), 250);
+        scrollChatToBottom();
+      }
+    });
+  }
+
+  if (chatCloseBtn && chatWidget) {
+    chatCloseBtn.addEventListener('click', () => {
+      chatWidget.classList.remove('active');
+      if (chatTriggerBtn) chatTriggerBtn.setAttribute('aria-expanded', 'false');
+      if (chatWindow) chatWindow.setAttribute('aria-hidden', 'true');
+    });
+  }
+
+  // Close on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && chatWidget && chatWidget.classList.contains('active')) {
+      chatWidget.classList.remove('active');
+      if (chatTriggerBtn) chatTriggerBtn.setAttribute('aria-expanded', 'false');
+      if (chatWindow) chatWindow.setAttribute('aria-hidden', 'true');
+    }
+  });
+
+  // Scroll messages to bottom
+  function scrollChatToBottom() {
+    if (chatMessages) {
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+  }
+
+  // Append a message to the chat
+  function appendMessage(text, isUser = false) {
+    if (!chatMessages) return;
+
+    const timeStr = getCurrentTimeString();
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `chat-msg ${isUser ? 'chat-msg-user' : 'chat-msg-agent'}`;
+
+    if (isUser) {
+      msgDiv.innerHTML = `
+        <div class="msg-content">
+          <div class="msg-bubble">${escapeHtml(text)}</div>
+          <span class="msg-time">${timeStr}</span>
+        </div>
+      `;
+    } else {
+      msgDiv.innerHTML = `
+        <div class="msg-avatar">B</div>
+        <div class="msg-content">
+          <div class="msg-bubble">${text}</div>
+          <span class="msg-time">${timeStr}</span>
+        </div>
+      `;
+    }
+
+    if (chatTyping && chatTyping.parentNode === chatMessages) {
+      chatMessages.insertBefore(msgDiv, chatTyping);
+    } else {
+      chatMessages.appendChild(msgDiv);
+    }
+
+    scrollChatToBottom();
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // Smart simulated replies based on keywords
+  function getBotReply(userMsg) {
+    const msg = userMsg.toLowerCase();
+
+    if (msg.includes('사용') || msg.includes('방법') || msg.includes('팁') || msg.includes('어떻게')) {
+      return `💡 <strong>벨로티 SB-79 샴푸브러시 사용법:</strong><br><br>
+1. 모발을 미온수로 충분히 적신 후 샴푸 거품을 냅니다.<br>
+2. 브러시를 손가락 사이에 편안하게 끼우고 두피에 가볍게 밀착시킵니다.<br>
+3. 원을 그리듯 부드럽게 롤링하며 마사지합니다.<br>
+4. <strong>뒷목과 승모근까지</strong> 쓸어내리듯 브러싱해주시면 뭉친 피로가 개운하게 풀립니다 ✨`;
+    }
+
+    if (msg.includes('배송') || msg.includes('언제') || msg.includes('출고') || msg.includes('도착')) {
+      return `🚚 <strong>배송 안내:</strong><br><br>
+평일 <strong>오후 2시 이전 주문 시 당일 출고</strong>됩니다!<br>
+전 상품 <strong>무료배송</strong>(도서산간 포함)이며, 일반적으로 출고 익일 안전하게 받아보실 수 있습니다.`;
+    }
+
+    if (msg.includes('할인') || msg.includes('세트') || msg.includes('가격') || msg.includes('얼마')) {
+      return `🎁 <strong>할인 혜택 안내:</strong><br><br>
+현재 런칭 특가 진행 중입니다!<br>
+• 1개 구매: <strong>12,900원</strong> (35% OFF)<br>
+• 2개 세트: <strong>23,220원</strong> (10% 추가 할인 🔥 BEST)<br>
+• 3개 세트: <strong>32,895원</strong> (15% 추가 할인)<br><br>
+가족이나 지인 선물용으로 2~3개 세트 주문이 가장 많습니다!`;
+    }
+
+    if (msg.includes('대량') || msg.includes('oem') || msg.includes('b2b') || msg.includes('납품') || msg.includes('도매')) {
+      return `🏢 <strong>대량 구매 & OEM 제조 안내:</strong><br><br>
+(주)벨로티는 40년 전통의 자체 국내 생산 공장을 보유하고 있어 기업 맞춤 대량 납품 및 로고 인쇄(OEM/ODM)가 가능합니다.<br><br>
+전담 상담 유선: <strong>070-4175-9582</strong> 또는 홈페이지 하단 [문의하기] 폼을 남겨주시면 담당자가 빠른 견적서를 보내드립니다!`;
+    }
+
+    if (msg.includes('소재') || msg.includes('실리콘') || msg.includes('아파') || msg.includes('자극') || msg.includes('두피')) {
+      return `🌿 <strong>소재 및 저자극 설계 안내:</strong><br><br>
+벨로티 SB-79는 딱딱한 플라스틱이나 일반 실리콘과 달리, <strong>피부 친화적 엘라스토머(Elastomer)</strong> 소재로 제작되었습니다.<br><br>
+피부 자극 테스트를 완료하여 매일 샤워 시 사용하셔도 두피에 자극이나 상처가 전혀 없습니다.`;
+    }
+
+    if (msg.includes('안녕') || msg.includes('반가') || msg.includes('하이')) {
+      return `반갑습니다! 벨로티 1:1 상담원입니다 😊<br><br>SB-79 샴푸브러시 구매 및 제품에 대해 궁금하신 점을 말씀해주시면 바로 도와드리겠습니다!`;
+    }
+
+    return `소중한 문의 감사합니다! 🙏<br><br>
+현재 전문 상담원이 실시간 확인 중입니다. 추가적인 실시간 유선 상담이 필요하신 경우 고객센터(<strong>070-4175-9582</strong>)로 연락주시면 더욱 상세히 안내해 드리겠습니다.`;
+  }
+
+  function handleSendMessage(messageText) {
+    if (!messageText || !messageText.trim()) return;
+
+    appendMessage(messageText.trim(), true);
+
+    if (chatTyping) {
+      chatTyping.style.display = 'flex';
+      scrollChatToBottom();
+    }
+
+    const quickReplies = document.getElementById('chat-quick-replies');
+    if (quickReplies) {
+      quickReplies.style.display = 'none';
+    }
+
+    const replyDelay = Math.floor(Math.random() * 300) + 600;
+    setTimeout(() => {
+      if (chatTyping) {
+        chatTyping.style.display = 'none';
+      }
+      const reply = getBotReply(messageText);
+      appendMessage(reply, false);
+    }, replyDelay);
+  }
+
+  if (chatForm && chatInput) {
+    chatForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = chatInput.value;
+      chatInput.value = '';
+      handleSendMessage(text);
+    });
+  }
+
+  quickChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      const msg = chip.getAttribute('data-msg') || chip.textContent;
+      handleSendMessage(msg);
+    });
+  });
 });
