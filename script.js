@@ -307,6 +307,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setTimeout(() => {
           showToast(`✅ [${nameInput.value.trim()}] 님의 문의가 성공적으로 접수되었습니다. 신속히 답변드리겠습니다!`);
+
+          // Prepend new Q&A item to the board
+          const qnaList = document.getElementById('qna-accordion-list');
+          if (qnaList) {
+            const newItem = document.createElement('div');
+            const isSecret = document.getElementById('inquiry-secret')?.checked;
+            newItem.className = 'qna-item open';
+            newItem.setAttribute('data-category', typeSelect.value || 'product');
+            newItem.innerHTML = `
+              <button class="qna-item-header" aria-expanded="true">
+                <div class="qna-item-badges">
+                  <span class="qna-badge" style="background:#FFF3E0;color:#E65100;">답변대기</span>
+                  <span class="qna-cat-tag">${typeSelect.options[typeSelect.selectedIndex].text}</span>
+                  ${isSecret ? '<span class="qna-badge qna-badge-secret">비밀글 🔒</span>' : ''}
+                </div>
+                <div class="qna-item-title-wrap">
+                  <span class="qna-title">${escapeHtml(titleInput.value.trim())}</span>
+                </div>
+                <div class="qna-item-meta">
+                  <span class="qna-author">${nameInput.value.trim().substring(0, 1)}*${nameInput.value.trim().slice(-1)}</span>
+                  <span class="qna-date">방금 전</span>
+                  <svg class="qna-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </div>
+              </button>
+              <div class="qna-item-body" style="display:block;">
+                <div class="qna-reply-box">
+                  <p class="qna-reply-text">
+                    <strong>문의 내용:</strong><br>${escapeHtml(messageInput.value.trim())}<br><br>
+                    <span style="color:var(--color-primary);font-weight:700;">벨로티 고객지원팀에 접수되었습니다. 확인 후 신속하게 연락드리겠습니다.</span>
+                  </p>
+                </div>
+              </div>
+            `;
+            const newHeader = newItem.querySelector('.qna-item-header');
+            newHeader.addEventListener('click', () => {
+              const isOpen = newItem.classList.toggle('open');
+              newHeader.setAttribute('aria-expanded', isOpen.toString());
+              const body = newItem.querySelector('.qna-item-body');
+              if (body) body.style.display = isOpen ? 'block' : 'none';
+            });
+            qnaList.insertBefore(newItem, qnaList.firstChild);
+            newItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+
           inquiryForm.reset();
           submitBtn.disabled = false;
           submitBtn.innerHTML = originalText;
@@ -326,7 +372,38 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 8. 1:1 Live Chat Widget Logic
+  // 8. Product Q&A Accordion & Filter Tabs Logic
+  const qnaItems = document.querySelectorAll('.qna-item');
+  qnaItems.forEach(item => {
+    const header = item.querySelector('.qna-item-header');
+    if (header) {
+      header.addEventListener('click', () => {
+        const isOpen = item.classList.toggle('open');
+        header.setAttribute('aria-expanded', isOpen.toString());
+        const body = item.querySelector('.qna-item-body');
+        if (body) body.style.display = isOpen ? 'block' : 'none';
+      });
+    }
+  });
+
+  const qnaTabs = document.querySelectorAll('.qna-tab');
+  qnaTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      qnaTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const category = tab.getAttribute('data-category');
+      const allItems = document.querySelectorAll('.qna-item');
+      allItems.forEach(item => {
+        if (category === 'all' || item.getAttribute('data-category') === category) {
+          item.style.display = 'block';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    });
+  });
+
+  // 9. 1:1 Live Chat Widget Logic
   const chatWidget = document.getElementById('chat-widget');
   const chatTriggerBtn = document.getElementById('chat-trigger-btn');
   const chatCloseBtn = document.getElementById('chat-close-btn');
@@ -352,6 +429,24 @@ document.addEventListener('DOMContentLoaded', () => {
     chatInitTime.textContent = getCurrentTimeString();
   }
 
+  function openChatWindow() {
+    if (!chatWidget) return;
+    chatWidget.classList.add('active');
+    if (chatTriggerBtn) chatTriggerBtn.setAttribute('aria-expanded', 'true');
+    if (chatWindow) chatWindow.setAttribute('aria-hidden', 'false');
+    if (chatInput) {
+      setTimeout(() => chatInput.focus(), 250);
+      scrollChatToBottom();
+    }
+  }
+
+  function closeChatWindow() {
+    if (!chatWidget) return;
+    chatWidget.classList.remove('active');
+    if (chatTriggerBtn) chatTriggerBtn.setAttribute('aria-expanded', 'false');
+    if (chatWindow) chatWindow.setAttribute('aria-hidden', 'true');
+  }
+
   // Toggle chat window open / close
   if (chatTriggerBtn && chatWidget) {
     chatTriggerBtn.addEventListener('click', () => {
@@ -366,20 +461,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  if (chatCloseBtn && chatWidget) {
-    chatCloseBtn.addEventListener('click', () => {
-      chatWidget.classList.remove('active');
-      if (chatTriggerBtn) chatTriggerBtn.setAttribute('aria-expanded', 'false');
-      if (chatWindow) chatWindow.setAttribute('aria-hidden', 'true');
+  // All open chat triggers
+  const openChatBtns = document.querySelectorAll('.btn-open-chat');
+  openChatBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openChatWindow();
     });
+  });
+
+  if (chatCloseBtn && chatWidget) {
+    chatCloseBtn.addEventListener('click', closeChatWindow);
   }
 
   // Close on Escape key
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && chatWidget && chatWidget.classList.contains('active')) {
-      chatWidget.classList.remove('active');
-      if (chatTriggerBtn) chatTriggerBtn.setAttribute('aria-expanded', 'false');
-      if (chatWindow) chatWindow.setAttribute('aria-hidden', 'true');
+      closeChatWindow();
     }
   });
 
@@ -434,6 +532,12 @@ document.addEventListener('DOMContentLoaded', () => {
   function getBotReply(userMsg) {
     const msg = userMsg.toLowerCase();
 
+    if (msg.includes('카톡') || msg.includes('카카오') || msg.includes('오픈') || msg.includes('상담원') || msg.includes('연결') || msg.includes('사람') || msg.includes('실시간')) {
+      return `💬 <strong>벨로티 공식 카카오톡 1:1 오픈채팅:</strong><br><br>
+아래 버튼을 터치하시면 카카오톡에서 전담 상담원과 실시간 1:1 대화가 바로 연결됩니다!<br><br>
+👉 <a href="https://open.kakao.com/o/slppScSi" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:8px 16px;background:#FEE500;color:#3C1E1E;font-weight:800;border-radius:20px;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,0.15);">🟡 카카오톡 1:1 오픈채팅 바로가기 &rarr;</a>`;
+    }
+
     if (msg.includes('사용') || msg.includes('방법') || msg.includes('팁') || msg.includes('어떻게')) {
       return `💡 <strong>벨로티 SB-79 샴푸브러시 사용법:</strong><br><br>
 1. 모발을 미온수로 충분히 적신 후 샴푸 거품을 냅니다.<br>
@@ -460,7 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (msg.includes('대량') || msg.includes('oem') || msg.includes('b2b') || msg.includes('납품') || msg.includes('도매')) {
       return `🏢 <strong>대량 구매 & OEM 제조 안내:</strong><br><br>
 (주)벨로티는 40년 전통의 자체 국내 생산 공장을 보유하고 있어 기업 맞춤 대량 납품 및 로고 인쇄(OEM/ODM)가 가능합니다.<br><br>
-전담 상담 유선: <strong>070-4175-9582</strong> 또는 홈페이지 하단 [문의하기] 폼을 남겨주시면 담당자가 빠른 견적서를 보내드립니다!`;
+카카오톡 1:1 오픈채팅(<a href="https://open.kakao.com/o/slppScSi" target="_blank" style="color:var(--color-primary);font-weight:800;text-decoration:underline;">바로가기</a>) 또는 유선전화(<strong>070-4175-9582</strong>)로 문의주시면 전담 팀이 빠른 견적서를 보내드립니다!`;
     }
 
     if (msg.includes('소재') || msg.includes('실리콘') || msg.includes('아파') || msg.includes('자극') || msg.includes('두피')) {
@@ -470,11 +574,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (msg.includes('안녕') || msg.includes('반가') || msg.includes('하이')) {
-      return `반갑습니다! 벨로티 1:1 상담원입니다 😊<br><br>SB-79 샴푸브러시 구매 및 제품에 대해 궁금하신 점을 말씀해주시면 바로 도와드리겠습니다!`;
+      return `반갑습니다! 벨로티 1:1 상담원입니다 😊<br><br>SB-79 샴푸브러시 구매 및 제품에 대해 궁금하신 점을 말씀해주시면 바로 도와드리겠습니다!<br><br>카카오톡으로 대화를 원하시면 <a href="https://open.kakao.com/o/slppScSi" target="_blank" style="color:#E65100;font-weight:800;text-decoration:underline;">[카톡 1:1 오픈채팅]</a>을 클릭해주세요.`;
     }
 
     return `소중한 문의 감사합니다! 🙏<br><br>
-현재 전문 상담원이 실시간 확인 중입니다. 추가적인 실시간 유선 상담이 필요하신 경우 고객센터(<strong>070-4175-9582</strong>)로 연락주시면 더욱 상세히 안내해 드리겠습니다.`;
+더욱 빠른 1:1 실시간 대화를 원하시면 <a href="https://open.kakao.com/o/slppScSi" target="_blank" rel="noopener noreferrer" style="color:#E65100;font-weight:800;text-decoration:underline;">카카오톡 1:1 오픈채팅</a>으로 연결하시거나 유선 고객센터(<strong>070-4175-9582</strong>)로 연락주시면 상세히 안내해 드리겠습니다.`;
   }
 
   function handleSendMessage(messageText) {
@@ -513,6 +617,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   quickChips.forEach(chip => {
     chip.addEventListener('click', () => {
+      if (chip.tagName === 'A') return; // let links navigate
       const msg = chip.getAttribute('data-msg') || chip.textContent;
       handleSendMessage(msg);
     });
