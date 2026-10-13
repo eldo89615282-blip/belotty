@@ -622,4 +622,290 @@ document.addEventListener('DOMContentLoaded', () => {
       handleSendMessage(msg);
     });
   });
+
+  // ==========================================
+  // 10. Dedicated Email Inquiry Section Logic
+  // ==========================================
+
+  // 10-1. One-click Email Address Copy
+  const btnCopyEmail = document.getElementById('btn-copy-email');
+  if (btnCopyEmail) {
+    const originalCopyHtml = btnCopyEmail.innerHTML;
+    btnCopyEmail.addEventListener('click', async () => {
+      const emailAddress = 'help@belotty.co.kr';
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(emailAddress);
+        } else {
+          const tempInput = document.createElement('input');
+          tempInput.value = emailAddress;
+          document.body.appendChild(tempInput);
+          tempInput.select();
+          document.execCommand('copy');
+          document.body.removeChild(tempInput);
+        }
+        btnCopyEmail.classList.add('copied');
+        btnCopyEmail.innerHTML = `
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          <span>복사 완료! (help@belotty.co.kr)</span>
+        `;
+        showToast('📋 벨로티 공식 이메일 (help@belotty.co.kr) 주소가 복사되었습니다!');
+        setTimeout(() => {
+          btnCopyEmail.classList.remove('copied');
+          btnCopyEmail.innerHTML = originalCopyHtml;
+        }, 2500);
+      } catch (err) {
+        showToast('벨로티 공식 이메일: help@belotty.co.kr');
+      }
+    });
+  }
+
+  // 10-2. Quick Email Template Autofill
+  const emailTemplateChips = document.querySelectorAll('.template-chip');
+  const emailInquiryType = document.getElementById('email-inquiry-type');
+  const emailExpectedQty = document.getElementById('email-expected-qty');
+  const emailSubject = document.getElementById('email-subject');
+  const emailBody = document.getElementById('email-body');
+
+  const emailTemplates = {
+    b2b: {
+      type: 'b2b',
+      qty: '100개 (협의 가능)',
+      subject: '[대량구매 견적요청] 벨로티 SB-79 샴푸브러시 기업 납품 견적 문의',
+      body: `안녕하세요.\n벨로티 SB-79 샴푸브러시 대량 구매(기업 납품/특판/복지몰) 견적을 요청드립니다.\n\n1. 희망 납기일: \n2. 포장/패키지 맞춤 요청 여부: (기본 패키지 / 개별 슬리브 등)\n3. 배송 희망 지역: \n4. 사업자등록증 첨부 여부: \n\n상세 견적서 및 전자세금계산서 발행 절차 안내 부탁드립니다.`
+    },
+    oem: {
+      type: 'oem',
+      qty: '500개 이상',
+      subject: '[OEM/ODM 맞춤제작] 브랜드 로고 실크인쇄 및 맞춤형 제작 상담',
+      body: `안녕하세요. 벨로티 SB-79 샴푸브러시 OEM/ODM 맞춤 제작 상담을 요청합니다.\n\n1. 제작 목적: 브랜드 맞춤 굿즈 / PB 상품 개발\n2. 인쇄 방식: 단색 실크 인쇄\n3. 예상 발주 수량: 500개 이상\n4. 로고 AI 파일 첨부 예정\n\n최소 발주 수량(MOQ), 단가 및 제작 리드타임 회신 부탁드립니다.`
+    },
+    sample: {
+      type: 'b2b',
+      qty: '샘플 2~3개',
+      subject: '[샘플 요청] 기업/기관 도입 검토를 위한 실물 샘플 신청',
+      body: `안녕하세요. 당사 도입 검토 차원에서 벨로티 SB-79 실물 샘플 테스트를 신청합니다.\n\n1. 회사명 및 담당 부서: \n2. 샘플 수령처 주소: \n3. 검토 후 예상 본 발주 수량: \n\n샘플 발송 절차 안내 부탁드립니다. 감사합니다.`
+    },
+    partnership: {
+      type: 'marketing',
+      qty: '',
+      subject: '[제휴/협업 제안] 벨로티 SB-79 마케팅 및 프로모션 협업 제안',
+      body: `안녕하세요. 벨로티 담당자님,\n\n당사와의 제휴 및 프로모션/인플루언서 협업을 제안드리고자 연락드립니다.\n\n1. 제안 내용 요약: \n2. 협업 채널 및 타겟 고객층: \n3. 상세 소개서/제안서 파일 첨부 여부: \n\n검토 후 회신 부탁드립니다. 감사합니다.`
+    }
+  };
+
+  emailTemplateChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      const templateKey = chip.getAttribute('data-template');
+      const templateData = emailTemplates[templateKey];
+      if (!templateData) return;
+
+      if (emailInquiryType) emailInquiryType.value = templateData.type;
+      if (emailExpectedQty) emailExpectedQty.value = templateData.qty;
+      if (emailSubject) emailSubject.value = templateData.subject;
+      if (emailBody) emailBody.value = templateData.body;
+
+      emailTemplateChips.forEach(c => c.style.borderColor = '');
+      chip.style.borderColor = 'var(--color-primary)';
+
+      showToast(`💡 [${chip.textContent.trim()}] 양식이 입력되었습니다.`);
+      if (emailSubject) {
+        emailSubject.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        emailSubject.focus();
+      }
+    });
+  });
+
+  // 10-3. File Attachment & Drag/Drop Handling
+  const fileDropzone = document.getElementById('file-dropzone');
+  const emailFileInput = document.getElementById('email-file-input');
+  const selectedFilesList = document.getElementById('selected-files-list');
+  let attachedFiles = [];
+
+  function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
+  function renderAttachedFiles() {
+    if (!selectedFilesList) return;
+    selectedFilesList.innerHTML = '';
+    attachedFiles.forEach((file, index) => {
+      const chip = document.createElement('span');
+      chip.className = 'file-chip';
+      chip.innerHTML = `
+        <span>📄 ${escapeHtml(file.name)}</span>
+        <span style="color:var(--color-text-muted);font-weight:400;font-size:0.75rem;">(${formatFileSize(file.size)})</span>
+        <button type="button" class="file-remove-btn" data-index="${index}" title="파일 삭제" aria-label="파일 삭제">&times;</button>
+      `;
+      selectedFilesList.appendChild(chip);
+    });
+
+    const removeBtns = selectedFilesList.querySelectorAll('.file-remove-btn');
+    removeBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(btn.getAttribute('data-index'), 10);
+        attachedFiles.splice(idx, 1);
+        renderAttachedFiles();
+      });
+    });
+  }
+
+  if (fileDropzone && emailFileInput) {
+    fileDropzone.addEventListener('click', (e) => {
+      if (e.target.closest('.file-remove-btn')) return;
+      emailFileInput.click();
+    });
+
+    emailFileInput.addEventListener('change', () => {
+      if (emailFileInput.files) {
+        Array.from(emailFileInput.files).forEach(file => {
+          if (file.size > 20 * 1024 * 1024) {
+            showToast(`⚠️ [${file.name}] 파일 용량이 20MB를 초과하여 제외되었습니다.`);
+          } else {
+            attachedFiles.push(file);
+          }
+        });
+        renderAttachedFiles();
+      }
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      fileDropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        fileDropzone.classList.add('dragover');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      fileDropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        fileDropzone.classList.remove('dragover');
+      });
+    });
+
+    fileDropzone.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      if (dt && dt.files && dt.files.length) {
+        Array.from(dt.files).forEach(file => {
+          if (file.size > 20 * 1024 * 1024) {
+            showToast(`⚠️ [${file.name}] 파일 용량이 20MB를 초과하여 제외되었습니다.`);
+          } else {
+            attachedFiles.push(file);
+          }
+        });
+        renderAttachedFiles();
+      }
+    });
+  }
+
+  // 10-4. Email Form Validation and Submission
+  const emailInquiryForm = document.getElementById('email-inquiry-form');
+  if (emailInquiryForm) {
+    const senderNameInput = document.getElementById('email-sender-name');
+    const senderEmailInput = document.getElementById('email-sender-address');
+    const phoneInput = document.getElementById('email-phone');
+    const inquiryTypeSelect = document.getElementById('email-inquiry-type');
+    const subjectInput = document.getElementById('email-subject');
+    const bodyInput = document.getElementById('email-body');
+    const privacyCheck = document.getElementById('email-privacy-check');
+    const submitBtn = document.getElementById('btn-submit-email');
+
+    function checkField(input, errorId, condition) {
+      if (!input) return false;
+      const errorEl = document.getElementById(errorId);
+      if (!condition) {
+        input.classList.add('is-invalid');
+        if (errorEl) errorEl.classList.add('visible');
+        return false;
+      } else {
+        input.classList.remove('is-invalid');
+        if (errorEl) errorEl.classList.remove('visible');
+        return true;
+      }
+    }
+
+    [senderNameInput, senderEmailInput, phoneInput, subjectInput, bodyInput].forEach(inp => {
+      if (inp) {
+        inp.addEventListener('input', () => {
+          inp.classList.remove('is-invalid');
+          const err = document.getElementById(`error-${inp.id}`);
+          if (err) err.classList.remove('visible');
+        });
+      }
+    });
+
+    if (inquiryTypeSelect) {
+      inquiryTypeSelect.addEventListener('change', () => {
+        inquiryTypeSelect.classList.remove('is-invalid');
+        const err = document.getElementById('error-email-inquiry-type');
+        if (err) err.classList.remove('visible');
+      });
+    }
+
+    if (privacyCheck) {
+      privacyCheck.addEventListener('change', () => {
+        const err = document.getElementById('error-email-privacy');
+        if (err && privacyCheck.checked) err.classList.remove('visible');
+      });
+    }
+
+    emailInquiryForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      let isValid = true;
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (!checkField(senderNameInput, 'error-email-sender-name', senderNameInput.value.trim().length >= 2)) isValid = false;
+      if (!checkField(senderEmailInput, 'error-email-sender-address', emailRegex.test(senderEmailInput.value.trim()))) isValid = false;
+      if (!checkField(phoneInput, 'error-email-phone', phoneInput.value.trim().length >= 8)) isValid = false;
+      if (!checkField(inquiryTypeSelect, 'error-email-inquiry-type', inquiryTypeSelect.value !== '')) isValid = false;
+      if (!checkField(subjectInput, 'error-email-subject', subjectInput.value.trim().length >= 2)) isValid = false;
+      if (!checkField(bodyInput, 'error-email-body', bodyInput.value.trim().length >= 5)) isValid = false;
+
+      const privacyError = document.getElementById('error-email-privacy');
+      if (!privacyCheck.checked) {
+        if (privacyError) privacyError.classList.add('visible');
+        isValid = false;
+      } else {
+        if (privacyError) privacyError.classList.remove('visible');
+      }
+
+      if (isValid) {
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite;">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.25"/>
+            <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" opacity="0.75"/>
+          </svg>
+          <span>이메일 전송 중...</span>
+        `;
+
+        setTimeout(() => {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalText;
+
+          const senderName = senderNameInput.value.trim();
+          showToast(`📨 [${senderName}] 님의 문의가 help@belotty.co.kr 로 정상 접수되었습니다! (24시간 이내 회신)`);
+
+          emailInquiryForm.reset();
+          attachedFiles = [];
+          renderAttachedFiles();
+          emailTemplateChips.forEach(c => c.style.borderColor = '');
+        }, 900);
+      } else {
+        showToast('⚠️ 필수 항목을 확인하신 후 다시 제출해주세요.');
+      }
+    });
+  }
 });
+
