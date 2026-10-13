@@ -252,4 +252,77 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  // 7. Inquiry Form Handling
+  const inquiryForm = document.getElementById('inquiry-form');
+  if (inquiryForm) {
+    inquiryForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      let isValid = true;
+
+      const nameInput = document.getElementById('inquiry-name');
+      const phoneInput = document.getElementById('inquiry-phone');
+      const emailInput = document.getElementById('inquiry-email');
+      const typeSelect = document.getElementById('inquiry-type');
+      const titleInput = document.getElementById('inquiry-title');
+      const messageInput = document.getElementById('inquiry-message');
+      const privacyCheck = document.getElementById('inquiry-privacy');
+
+      function checkField(input, errorId, condition) {
+        const errorEl = document.getElementById(errorId);
+        if (!condition) {
+          input.classList.add('is-invalid');
+          if (errorEl) errorEl.classList.add('visible');
+          isValid = false;
+        } else {
+          input.classList.remove('is-invalid');
+          if (errorEl) errorEl.classList.remove('visible');
+        }
+      }
+
+      checkField(nameInput, 'error-name', nameInput.value.trim().length >= 2);
+      checkField(phoneInput, 'error-phone', phoneInput.value.trim().length >= 8);
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      checkField(emailInput, 'error-email', emailRegex.test(emailInput.value.trim()));
+
+      checkField(typeSelect, 'error-type', typeSelect.value !== '');
+      checkField(titleInput, 'error-title', titleInput.value.trim().length >= 2);
+      checkField(messageInput, 'error-message', messageInput.value.trim().length >= 5);
+
+      const privacyError = document.getElementById('error-privacy');
+      if (!privacyCheck.checked) {
+        if (privacyError) privacyError.classList.add('visible');
+        isValid = false;
+      } else {
+        if (privacyError) privacyError.classList.remove('visible');
+      }
+
+      if (isValid) {
+        const submitBtn = document.getElementById('btn-submit-inquiry');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span>접수 중...</span>`;
+
+        setTimeout(() => {
+          showToast(`✅ [${nameInput.value.trim()}] 님의 문의가 성공적으로 접수되었습니다. 신속히 답변드리겠습니다!`);
+          inquiryForm.reset();
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalText;
+        }, 700);
+      }
+    });
+
+    // Real-time error removal
+    inquiryForm.querySelectorAll('input, select, textarea').forEach(field => {
+      const clearError = () => {
+        field.classList.remove('is-invalid');
+        const err = field.parentElement.querySelector('.field-error');
+        if (err) err.classList.remove('visible');
+      };
+      field.addEventListener('input', clearError);
+      field.addEventListener('change', clearError);
+    });
+  }
 });
